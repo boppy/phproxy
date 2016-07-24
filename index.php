@@ -4,8 +4,11 @@
  *
  * PHProxy
  *
+ * @version     0.6
  * @author		Miglen
  * @copyright	2002-2007 A.A. (whitefyre)
+ * @copyright   2015- Miglen Evlogiev (miglen)
+ * @copyright   2016- Henning Bopp (boppy)
  * @description Web based http proxy written on php.
  * @url	 		https://phproxy.github.io
  * @license		GNU GPL v3
@@ -92,7 +95,7 @@ $_system            = array
                         'stripslashes' => get_magic_quotes_gpc()
                     );
 $_proxify           = array('text/html' => 1, 'application/xml+xhtml' => 1, 'application/xhtml+xml' => 1, 'text/css' => 1);
-$_version           = '0.5b2';
+$_version           = '0.6';
 $_http_host         = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : (isset($_SERVER['SERVER_NAME']) ? $_SERVER['SERVER_NAME'] : 'localhost');
 $_script_url        = 'http' . ((isset($_ENV['HTTPS']) && $_ENV['HTTPS'] == 'on') || $_SERVER['SERVER_PORT'] == 443 ? 's' : '') . '://' . $_http_host . ($_SERVER['SERVER_PORT'] != 80 && $_SERVER['SERVER_PORT'] != 443 ? ':' . $_SERVER['SERVER_PORT'] : '') . $_SERVER['PHP_SELF'];
 $_script_base       = substr($_script_url, 0, strrpos($_script_url, '/')+1);
