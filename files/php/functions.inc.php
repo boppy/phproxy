@@ -3,7 +3,7 @@
 
 
 function show_report($data)
-{    
+{
 	require_once("./files/php/index.inc.php");
     exit(0);
 }
@@ -29,7 +29,7 @@ function set_post_vars($array, $parent_key = null)
             $temp[$key] = urlencode($value);
         }
     }
-    
+
     return $temp;
 }
 
@@ -70,11 +70,11 @@ function url_parse($url, & $container)
         {
             $temp['port'] = $temp['scheme'] === 'https' ? 443 : 80;
         }
-        
+
         $temp['path'] = isset($temp['path']) ? $temp['path'] : '/';
         $path         = array();
         $temp['path'] = explode('/', $temp['path']);
-    
+
         foreach ($temp['path'] as $dir)
         {
             if ($dir === '..')
@@ -97,23 +97,23 @@ function url_parse($url, & $container)
 
         return true;
     }
-    
+
     return false;
 }
 
 function complete_url($url, $proxify = true)
 {
     $url = trim($url);
-    
+
     if ($url === '')
     {
         return '';
     }
-    
+
     $hash_pos = strrpos($url, '#');
     $fragment = $hash_pos !== false ? '#' . substr($url, $hash_pos) : '';
     $sep_pos  = strpos($url, '://');
-    
+
     if ($sep_pos === false || $sep_pos > 5)
     {
         switch ($url{0})
@@ -149,10 +149,20 @@ function proxify_inline_css($css)
     {
         $css = str_replace($matches[$i][0], 'url(' . proxify_css_url($matches[$i][1]) . ')', $css);
     }
-    
+
     return $css;
 }
 
+function proxify_js($js) {
+    $matchUrls = '#(["\'])((?:https?:)?\/\/[\w\/\.\?~&=]*?)\1#';
+
+    preg_match_all($matchUrls, $js, $matches, PREG_SET_ORDER);
+
+    for ($i = 0, $count = count($matches); $i < $count; ++$i){
+        $js = str_replace($matches[$i][0], $matches[$i][1] . complete_url($matches[$i][2]) . '&adp='.$matches[$i][1], $js);
+    }
+    return $js;
+}
 function proxify_css($css)
 {
     $css = proxify_inline_css($css);
@@ -188,27 +198,27 @@ function proxify_css_url($url)
 
     function encode_url($url){
 		global $_flags;
-		
-		
+
+
 		if($_flags['rotate13']){
 			$url = str_rot13($url);
 		}elseif($_flags['base64_encode']){
 			$url = base64_encode($url);
 		}
-		
+
         return rawurlencode($url);
     }
-	
+
     function decode_url($url){
 		global $_flags;
 		$url = rawurldecode($url);
-		
+
 		if($_flags['rotate13']){
 			$url = str_rot13($url);
 		}elseif($_flags['base64_encode']){
 			$url = base64_decode($url);
 		}
-		
+
         return str_replace(array('&amp;', '&#38;'), '&', $url);
     }
 

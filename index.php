@@ -690,41 +690,47 @@ else
 
     $tags = array
     (
-        'a'          => array('href'),
-        'img'        => array('src', 'longdesc'),
-        'image'      => array('src', 'longdesc'),
-        'body'       => array('background'),
-        'base'       => array('href'),
-        'frame'      => array('src', 'longdesc'),
-        'iframe'     => array('src', 'longdesc'),
-        'head'       => array('profile'),
-        'layer'      => array('src'),
-        'input'      => array('src', 'usemap'),
-        'form'       => array('action'),
-        'area'       => array('href'),
-        'link'       => array('href', 'src', 'urn'),
-        'meta'       => array('content'),
-        'param'      => array('value'),
-        'applet'     => array('codebase', 'code', 'object', 'archive'),
-        'object'     => array('usermap', 'codebase', 'classid', 'archive', 'data'),
-        'script'     => array('src'),
-        'select'     => array('src'),
-        'hr'         => array('src'),
-        'table'      => array('background'),
-        'tr'         => array('background'),
-        'th'         => array('background'),
-        'td'         => array('background'),
-        'bgsound'    => array('src'),
-        'blockquote' => array('cite'),
-        'del'        => array('cite'),
-        'embed'      => array('src'),
-        'fig'        => array('src', 'imagemap'),
-        'ilayer'     => array('src'),
-        'ins'        => array('cite'),
-        'note'       => array('src'),
-        'overlay'    => array('src', 'imagemap'),
-        'q'          => array('cite'),
-        'ul'         => array('src')
+    'a'          => array('href'),
+    'applet'     => array('archive', 'code', 'codebase', 'object'),
+    'area'       => array('href'),
+    'audio'      => array('src'),
+    'base'       => array('href'),
+    'bgsound'    => array('src'),
+    'blockquote' => array('cite'),
+    'button'     => array('formaction'),
+    'body'       => array('background'),
+    'del'        => array('cite'),
+    'embed'      => array('src'),
+    'fig'        => array('imagemap', 'src'),
+    'form'       => array('action'),
+    'frame'      => array('longdesc', 'src'),
+    'head'       => array('profile'),
+    'hr'         => array('src'),
+    'iframe'     => array('longdesc', 'src'),
+    'ilayer'     => array('src'),
+    'img'        => array('data-src', 'data-src-high', 'data-src-medium', 'data-src-small', 'data-src-x-high', 'longdesc', 'src', 'srcset'),
+    'image'      => array('src', 'longdesc'),
+    'input'      => array('formaction', 'src', 'usemap'),
+    'ins'        => array('cite'),
+    'layer'      => array('src'),
+    'link'       => array('href', 'src', 'urn'),
+    'menuitem'   => array('icon'),
+    'meta'       => array('content'),
+    'note'       => array('src'),
+    'object'     => array('archive', 'classid', 'codebase', 'data', 'usermap'),
+    'overlay'    => array('imagemap', 'src'),
+    'param'      => array('value'),
+    'q'          => array('cite'),
+    'script'     => array('src'),
+    'select'     => array('src'),
+    'source'     => array('src', 'srcset'),
+    'table'      => array('background'),
+    'track'      => array('src'),
+    'td'         => array('background'),
+    'th'         => array('background'),
+    'tr'         => array('background'),
+    'ul'         => array('src'),
+    'video'      => array('poster', 'src'),
     );
 
     preg_match_all('#(<\s*style[^>]*>)(.*?)(<\s*/\s*style[^>]*>)#is', $_response_body, $matches, PREG_SET_ORDER);
@@ -733,6 +739,16 @@ else
     {
         $_response_body = str_replace($matches[$i][0], $matches[$i][1]. proxify_css($matches[$i][2]) .$matches[$i][3], $_response_body);
     }
+
+    preg_match_all('#(<\s*script[^>]*>)(.*?)(<\s*/\s*script[^>]*>)#is', $_response_body, $matches, PREG_SET_ORDER);
+
+    for ($i = 0, $count_i = count($matches); $i < $count_i; ++$i)
+    {
+        if(strlen($matches[$i][2]) < 10) continue;
+
+        $_response_body = str_replace($matches[$i][0], $matches[$i][1]. proxify_js($matches[$i][2]) .$matches[$i][3], $_response_body);
+    }
+
 
     preg_match_all("#<\s*([a-zA-Z\?-]+)([^>]+)>#S", $_response_body, $matches);
 
@@ -749,176 +765,74 @@ else
 
         for ($j = 0, $count_j = count($m); $j < $count_j; $attrs[strtolower($m[$j][1])] = (isset($m[$j][4]) ? $m[$j][4] : (isset($m[$j][3]) ? $m[$j][3] : (isset($m[$j][2]) ? $m[$j][2] : false))), ++$j);
 
-        if (isset($attrs['style']))
-        {
+        if (isset($attrs['style'])) {
             $rebuild = true;
             $attrs['style'] = proxify_inline_css($attrs['style']);
         }
 
         $tag = strtolower($matches[1][$i]);
 
-        if (isset($tags[$tag]))
-        {
-            switch ($tag)
-            {
-                case 'a':
-                    if (isset($attrs['href']))
-                    {
-                        $rebuild = true;
-                        $attrs['href'] = complete_url($attrs['href']);
-                    }
-                    break;
-                case 'img':
-                    if (isset($attrs['src']))
-                    {
-                        $rebuild = true;
-                        $attrs['src'] = complete_url($attrs['src']);
-                    }
-                    if (isset($attrs['longdesc']))
-                    {
-                        $rebuild = true;
-                        $attrs['longdesc'] = complete_url($attrs['longdesc']);
-                    }
-                    break;
-                case 'form':
-                    if (isset($attrs['action']))
-                    {
-                        $rebuild = true;
-
-                        if (trim($attrs['action']) === '')
-                        {
-                            $attrs['action'] = $_url_parts['path'];
+        if (isset($tags[$tag])) {
+            $tempBase = false;
+            if(isset($attrs['codebase'])){
+                $tempBase = $_base;
+                url_parse(complete_url(rtrim($attrs['codebase'], '/') . '/', false), $_base);
+                unset($attrs['codebase']);
+            }
+            foreach ($tags[$tag] as $attr) {
+                if (isset($attrs[$attr])) {
+                    $attrib = $attrs[$attr];
+                    $rebuild = true;
+                    if($attr == 'srcset'){
+                        $srcs = explode(',', $attrib);
+                        $set = [];
+                        foreach($srcs as $src){
+                            $src = trim($src);
+                            list($src, $rest) = explode(' ', $src, 2);
+                            $src = complete_url($src);
+                            $set[] = $src .' '. $rest;
                         }
-                        if (!isset($attrs['method']) || strtolower(trim($attrs['method'])) === 'get')
-                        {
+                        $attrib = implode(', ', $set);
+                    } elseif($attr == 'action'){
+                        if (trim($attrib) === '') {
+                            $attrib = $_url_parts['path'];
+                        }
+                        if (!isset($attrs['method']) || strtolower(trim($attrs['method'])) === 'get'){
                             $extra_html = '<input type="hidden" name="' . $_config['get_form_name'] . '" value="' . encode_url(complete_url($attrs['action'], false)) . '" />';
-                            $attrs['action'] = '';
+                            $attrib = '';
                             break;
                         }
-
-                        $attrs['action'] = complete_url($attrs['action']);
-                    }
-                    break;
-                case 'base':
-                    if (isset($attrs['href']))
-                    {
-                        $rebuild = true;
-                        url_parse($attrs['href'], $_base);
-                        $attrs['href'] = complete_url($attrs['href']);
-                    }
-                    break;
-                case 'meta':
-                    if ($_flags['strip_meta'] && isset($attrs['name']))
-                    {
+                        $attrib = complete_url($attrib);
+                    } elseif($attr == 'profile' && $tag == 'head'){
+                        $attrib = implode(' ', array_map('complete_url', explode(' ', $attrib)));
+                    } elseif($attr == 'content' && $tag == 'meta' && !$_flags['strip_meta']){
+                        if(isset($attrs['http-equiv']) && preg_match('#\s*refresh\s*#i', $attrs['http-equiv']) && preg_match('#^(\s*[0-9]*\s*;\s*url=)(.*)#i', $attrs['content'], $content)){
+                            $attrib =  $content[1] . complete_url(trim($content[2], '"\''));
+                        }
+                    } elseif($tag == 'meta' && $_flags['strip_meta']) {
                         $_response_body = str_replace($matches[0][$i], '', $_response_body);
-                    }
-                    if (isset($attrs['http-equiv'], $attrs['content']) && preg_match('#\s*refresh\s*#i', $attrs['http-equiv']))
-                    {
-                        if (preg_match('#^(\s*[0-9]*\s*;\s*url=)(.*)#i', $attrs['content'], $content))
-                        {
-                            $rebuild = true;
-                            $attrs['content'] =  $content[1] . complete_url(trim($content[2], '"\''));
+                    } elseif($attr == 'code' && $tag == 'applet'){
+                        if(strpos($attrs['code'], '/') !== false) $attrib = complete_url($$attrib);
+                    } elseif($attr == 'classid' && $tag == 'object'){
+                        if(substr($attrib, 0, 6) == 'clsid:') $attrib = complete_url($$attrib);
+                    } elseif($attr == 'archive'){
+                        $attrib = implode(',', array_map('complete_url', preg_split('#\s*,\s*#', $attrib)));
+                    // can ether way be converted...
+                    //} elseif($attr == 'value' && $tag == 'param' && $attrs['valuetype'] == 'ref' && preg_match('#^[\w.+-]+://#', $attrib)){
+                    } else {
+                        if($attr == 'href' && $tag == 'base'){
+                            url_parse($attrib, $_base);
+                            $_response_body = str_replace($matches[0][$i], '', $_response_body);
+                        } else {
+                            $attrib = complete_url($attrib);
                         }
                     }
-                    break;
-                case 'head':
-                    if (isset($attrs['profile']))
-                    {
-                        $rebuild = true;
-                        $attrs['profile'] = implode(' ', array_map('complete_url', explode(' ', $attrs['profile'])));
-                    }
-                    break;
-                case 'applet':
-                    if (isset($attrs['codebase']))
-                    {
-                        $rebuild = true;
-                        $temp = $_base;
-                        url_parse(complete_url(rtrim($attrs['codebase'], '/') . '/', false), $_base);
-                        unset($attrs['codebase']);
-                    }
-                    if (isset($attrs['code']) && strpos($attrs['code'], '/') !== false)
-                    {
-                        $rebuild = true;
-                        $attrs['code'] = complete_url($attrs['code']);
-                    }
-                    if (isset($attrs['object']))
-                    {
-                        $rebuild = true;
-                        $attrs['object'] = complete_url($attrs['object']);
-                    }
-                    if (isset($attrs['archive']))
-                    {
-                        $rebuild = true;
-                        $attrs['archive'] = implode(',', array_map('complete_url', preg_split('#\s*,\s*#', $attrs['archive'])));
-                    }
-                    if (!empty($temp))
-                    {
-                        $_base = $temp;
-                    }
-                    break;
-                case 'object':
-                    if (isset($attrs['usemap']))
-                    {
-                        $rebuild = true;
-                        $attrs['usemap'] = complete_url($attrs['usemap']);
-                    }
-                    if (isset($attrs['codebase']))
-                    {
-                        $rebuild = true;
-                        $temp = $_base;
-                        url_parse(complete_url(rtrim($attrs['codebase'], '/') . '/', false), $_base);
-                        unset($attrs['codebase']);
-                    }
-                    if (isset($attrs['data']))
-                    {
-                        $rebuild = true;
-                        $attrs['data'] = complete_url($attrs['data']);
-                    }
-                    if (isset($attrs['classid']) && !preg_match('#^clsid:#i', $attrs['classid']))
-                    {
-                        $rebuild = true;
-                        $attrs['classid'] = complete_url($attrs['classid']);
-                    }
-                    if (isset($attrs['archive']))
-                    {
-                        $rebuild = true;
-                        $attrs['archive'] = implode(' ', array_map('complete_url', explode(' ', $attrs['archive'])));
-                    }
-                    if (!empty($temp))
-                    {
-                        $_base = $temp;
-                    }
-                    break;
-                case 'param':
-                    if (isset($attrs['valuetype'], $attrs['value']) && strtolower($attrs['valuetype']) == 'ref' && preg_match('#^[\w.+-]+://#', $attrs['value']))
-                    {
-                        $rebuild = true;
-                        $attrs['value'] = complete_url($attrs['value']);
-                    }
-                    break;
-                case 'frame':
-                case 'iframe':
-                    if (isset($attrs['src']))
-                    {
-                        $rebuild = true;
-                        $attrs['src'] = complete_url($attrs['src']) . '&nf=1';
-                    }
-                    if (isset($attrs['longdesc']))
-                    {
-                        $rebuild = true;
-                        $attrs['longdesc'] = complete_url($attrs['longdesc']);
-                    }
-                    break;
-                default:
-                    foreach ($tags[$tag] as $attr)
-                    {
-                        if (isset($attrs[$attr]))
-                        {
-                            $rebuild = true;
-                            $attrs[$attr] = complete_url($attrs[$attr]);
-                        }
-                    }
-                    break;
+                    $attrs[$attr] = $attrib;
+                }
+            }
+
+            if($tempBase){
+                $_base = $tempBase;
             }
         }
 
@@ -937,23 +851,58 @@ else
 
     if ($_flags['include_form'] && !isset($_GET['nf']))
     {
-        $_url_form      = '<div style="width:100%;margin:0;text-align:center;border-bottom:1px solid #725554;color:#000000;background-color:#F2FDF3;font-size:12px;font-weight:bold;font-family:Bitstream Vera Sans,arial,sans-serif;padding:4px;">'
-                        . '<form method="post" action="' . $_script_url . '">'
-                        . ' <label for="____' . $_config['url_var_name'] . '"><a href="' . $_url . '">Address</a>:</label> <input id="____' . $_config['url_var_name'] . '" type="text" size="80" name="' . $_config['url_var_name'] . '" value="' . $_url . '" />'
-                        . ' <input type="submit" name="go" value="Go" />'
-                        . ' [go: <a href="' . $_script_url . '?' . $_config['url_var_name'] . '=' . encode_url($_url_parts['prev_dir']) .' ">up one dir</a>, <a href="' . $_script_base . '">main page</a>]'
-                        . '<br /><hr />';
+        if(filemtime('files/css/style.less.ts') != filemtime('files/css/style.less')){
+            $path = 'files/';
+            include('files/service/create-css-files.php');
+        }
 
-        foreach ($_flags as $flag_name => $flag_value)
-        {
-            if (!$_frozen_flags[$flag_name])
-            {
-                $_url_form .= '<label><input type="checkbox" name="' . $_config['flags_var_name'] . '[' . $flag_name . ']"' . ($flag_value ? ' checked="checked"' : '') . ' /> ' . $_labels[$flag_name][0] . '</label> ';
+        $urlForm = [];
+        $urlForm[] = '<style>'. file_get_contents('files/css/style-inline.css') .'</style>';
+        $urlForm[] = '<div id="ppce_">';
+        $urlForm[] =   '<form method="post" action="' . $_script_url . '">';
+        $urlForm[] =     '<input type="text" name="' . $_config['url_var_name'] . '" value="' . $_url . '" />';
+        $urlForm[] =     '<input type="submit" name="go" value="go ▶▶" />';
+        $urlForm[] =     '<div id="ppce_bar">';
+        $urlForm[] =       '<a href="' . $_script_url . '?' . $_config['url_var_name'] . '=' . encode_url($_url_parts['prev_dir']) .' ">▲ up</a>';
+        $urlForm[] =       '<a href="' . $_script_base . '">⌂ home</a>';
+        $urlForm[] =       '<a href="#" onclick="__ppce_toggle()" id="ppce_options">⚙ opt</a>';
+        $urlForm[] =     '</div>';
+
+        $idx=0;
+        foreach ($_flags as $flag_name => $flag_value) {
+            if (!$_frozen_flags[$flag_name]) {
+                $urlForm[] =  '<input id="ppce-cb-'. ++$idx .'" type="checkbox" name="' . $_config['flags_var_name'] . '[' . $flag_name . ']"' . ($flag_value ? ' checked="checked"' : '') . ' /><label for="ppce-cb-'. $idx .'">' . $_labels[$flag_name][0] . '</label>';
             }
         }
 
-        $_url_form .= '</form></div>';
-        $_response_body = preg_replace('#\<\s*body(.*?)\>#si', "$0\n$_url_form" , $_response_body, 1);
+        $urlForm[] =   '</form>';
+        $urlForm[] =   '</div>';
+        $urlForm[] =  "<script>
+        var isMobi = navigator.userAgent.match(/(mob|android)/i);
+        var ppce = document.getElementById('ppce_');
+        ppce.className += isMobi ? 'mobi' : 'nomobi';
+
+        function __ppce_toggle(){
+            var elms = document.querySelectorAll('#ppce_ label');
+            [].forEach.call(elms, function(elm) {
+                var hasClass = function(elm, cl){ return [].indexOf.call(elm.classList, cl) >= 0; }
+                if(hasClass(elm, 'visible')){
+                    elm.className = elm.className.replace(/ visible/, '');
+                } else {
+                    elm.className += ' visible';
+                }
+            });
+
+        }
+
+        if(isMobi){
+            if(ppce.offsetLeft == 0 && ppce.offsetTop == 0){
+                ppce.className += ' ppce_ontop';
+            }
+        }
+        </script>";
+
+        $_response_body = preg_replace('#\<\s*body(.*?)\>#si', "$0\n".implode('', $urlForm), $_response_body, 1);
     }
 }
 
